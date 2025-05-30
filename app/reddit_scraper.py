@@ -1,17 +1,22 @@
 import praw
+import os
+from dotenv import load_dotenv
 from datetime import datetime, timezone
 import pandas as pd
 
+
+load_dotenv()
 # Reddit API
 reddit = praw.Reddit(
-    client_id="l6V0G-WG0T1n7kHDhmmW9w",
-    client_secret="uRc1GFf_qCg_lDoJtYconsAJB9xhJQ",
-    password="akashviswanathan",
-    user_agent="sentiment-dashboard-script by /u/sentiment-analyst-bo",
-    username="sentiment-analyst-bo"
+    client_id=os.getenv("REDDIT_CLIENT_ID"),
+    client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
+    username=os.getenv("REDDIT_USERNAME"),
+    password=os.getenv("REDDIT_PASSWORD"),
+    user_agent=os.getenv("REDDIT_USER_AGENT")
 )
 
-def scrape_reddit(keyword, subreddits=["technology", "ArtificialInteligence", "computerscience", "datascience", "news"], posts_per_sub=30):
+
+def scrape_reddit(keyword, subreddits=["technology", "artificialinteligence", "computerscience", "datascience", "news", "chatgpt", "all"], posts_per_sub=30):
     posts = []
     for sub in subreddits:
         try:
