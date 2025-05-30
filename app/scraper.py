@@ -1,5 +1,10 @@
 # app/scraper.py
 
+'''
+Not currently implemented. This is just meant to combine the reddit and 
+twitter scrapers, but I kept them seperate for testing and clarity purposes.
+'''
+
 import certifi
 import os
 os.environ["SSL_CERT_FILE"] = certifi.where()
