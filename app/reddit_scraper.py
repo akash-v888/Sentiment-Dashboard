@@ -38,5 +38,6 @@ def scrape_reddit(keyword, subreddits=["technology", "artificialinteligence", "c
 if __name__ == "__main__":
     keyword = input("Enter keyword for Reddit: ")
     df = scrape_reddit(keyword)
+    os.makedirs("data", exist_ok=True)
     df.to_csv("data/reddit_data.csv", index=False)
     print(f"Saved {len(df)} Reddit posts to data/reddit_data.csv")
