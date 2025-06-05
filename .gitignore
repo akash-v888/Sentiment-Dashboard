@@ -18,3 +18,6 @@ playwright_profile*/
 .vscode/
 
 data/*.csv
+
+app/test.py
+app/test_*.py
