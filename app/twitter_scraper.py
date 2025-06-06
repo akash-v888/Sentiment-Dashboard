@@ -4,13 +4,10 @@ import re
 import pandas as pd
 from langdetect import detect
 import emoji
-import openai
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
-USE_AI_FILTER = False  # Setting true uses OpenAI API
-openai.api_key = os.getenv("OPENAI_SECRET")
 
 def clean_text(text):
     text = re.sub(r"http\S+", "", text)
@@ -22,42 +19,21 @@ def clean_text(text):
 
 def is_valid_tweet(text):
     try:
-        if detect(text) != "en":
-            return False
+        lang = detect(text)
     except:
+        return False
+    if detect(text) != "en":
         return False
     text = clean_text(text)
     return len(text) >= 20 and not text.lower().startswith("rt ")
 
-async def ai_is_useful(text, keyword):
-    try:
-        prompt = f"""You are analyzing tweets from a Twitter search for the keyword: "{keyword}".
-Determine if this tweet is relevant and useful for analyzing public sentiment *about* the keyword. 
-Respond ONLY with YES or NO.
-
-Tweet:
-{text}
-"""
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo", # gpt-4.0 also works
-            messages=[
-                {"role": "system", "content": "You evaluate whether tweets are relevant to a topic for sentiment analysis."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0
-        )
-        reply = response['choices'][0]['message']['content'].strip().upper()
-        return reply.startswith("YES")
-    except:
-        return False
-
-async def scrape_tweets(keyword="OpenAI", max_tweets=10):
+async def scrape_tweets(keyword="Artificial Intelligence", max_tweets=35):
     user_data_dir = "/Users/aviswa/Desktop/Projects/Sentiment-Dashboard/playwright_profile"
 
     async with async_playwright() as p:
         browser = await p.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
-            headless=False,
+            headless=False, #false shows the chrome canary browser
             executable_path="/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary"
         )
         page = await browser.new_page()
@@ -74,6 +50,8 @@ async def scrape_tweets(keyword="OpenAI", max_tweets=10):
             tweets = await page.query_selector_all('article')
 
             for tweet in tweets:
+                if len(tweets_data) >= max_tweets:
+                    break
                 try:
                     content = await tweet.query_selector('div[lang]')
                     raw_text = await content.inner_text()
@@ -86,11 +64,6 @@ async def scrape_tweets(keyword="OpenAI", max_tweets=10):
                     if not is_valid_tweet(cleaned):
                         continue
 
-                    if USE_AI_FILTER:
-                        useful = await ai_is_useful(cleaned, keyword)
-                        if not useful:
-                            continue
-
                     user_handle = await tweet.query_selector('div[dir="ltr"] span')
                     username = await user_handle.inner_text() if user_handle else "N/A"
 
@@ -100,12 +73,13 @@ async def scrape_tweets(keyword="OpenAI", max_tweets=10):
                     tweets_data.append({
                         "text": cleaned,
                         "user": username,
-                        "timestamp": timestamp
+                        "timestamp": timestamp,
+                        "source": "Twitter",
+                        "keyword": keyword
                     })
 
-                    if len(tweets_data) >= max_tweets:
-                        break
-                except:
+                except Exception as e:
+                    print(f"[WARN] Error parsing tweet: {e}")
                     continue
 
             await page.mouse.wheel(0, 3000)
@@ -115,10 +89,10 @@ async def scrape_tweets(keyword="OpenAI", max_tweets=10):
         await browser.close()
 
         df = pd.DataFrame(tweets_data)
+        os.makedirs("data", exist_ok=True)
         df.to_csv("data/twitter_data.csv", index=False)
         print(f"Scraped and saved {len(df)} cleaned tweets for keyword: '{keyword}'.")
 
-# Entry point with dynamic keyword
 if __name__ == "__main__":
     keyword_input = input("Enter a keyword to search tweets for: ").strip()
     asyncio.run(scrape_tweets(keyword=keyword_input))
